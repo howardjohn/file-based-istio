@@ -188,6 +188,15 @@ func (a *ADSC) Run() error {
 	return nil
 }
 
+func (a *ADSC) ack(msg *xdsapi.DiscoveryResponse) {
+	_ = a.stream.Send(&xdsapi.DiscoveryRequest{
+		ResponseNonce: msg.Nonce,
+		TypeUrl:       msg.TypeUrl,
+		Node:          a.node(),
+		VersionInfo:   msg.VersionInfo,
+	})
+}
+
 func (a *ADSC) handleRecv() {
 	for {
 		fmt.Println("recv")
@@ -197,6 +206,7 @@ func (a *ADSC) handleRecv() {
 			return
 		}
 		a.Updates <- msg
+		a.ack(msg)
 		//listeners := []*xdsapi.Listener{}
 		//clusters := []*xdsapi.Cluster{}
 		//routes := []*xdsapi.RouteConfiguration{}
@@ -224,7 +234,6 @@ func (a *ADSC) handleRecv() {
 }
 
 func main() {
-
 	grpc := fmt.Sprintf("localhost:15010")
 	adsc, err := Dial(grpc, &Config{
 		IP:        "10.11.0.1",
@@ -237,7 +246,7 @@ func main() {
 	for {
 		select {
 		case r := <-adsc.Updates:
-			fmt.Println(r)
+			fmt.Printf("Got update: %v\n", r.TypeUrl)
 		case <-time.After(time.Second * 10):
 			fmt.Println("Done")
 			return
