@@ -106,6 +106,7 @@ type ADSC struct {
 
 	// Updates includes the type of the last update received from the server.
 	Updates     chan string
+	RawUpdates  chan *xdsapi.DiscoveryResponse
 	VersionInfo map[string]string
 
 	mutex sync.Mutex
@@ -136,6 +137,7 @@ func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
 		done:        make(chan error),
 		Updates:     make(chan string, 100),
+		RawUpdates:  make(chan *xdsapi.DiscoveryResponse, 100),
 		VersionInfo: map[string]string{},
 		certDir:     certDir,
 		url:         url,
@@ -264,6 +266,8 @@ func (a *ADSC) handleRecv() {
 			a.Updates <- "close"
 			return
 		}
+
+		a.RawUpdates <- msg
 
 		listeners := []*xdsapi.Listener{}
 		clusters := []*xdsapi.Cluster{}

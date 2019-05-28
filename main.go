@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc"
+	"istio.io/file-envoy/adsc"
 
 	ads "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	"github.com/ghodss/yaml"
@@ -235,7 +236,7 @@ func (a *ADSC) handleRecv() {
 
 func main() {
 	grpc := fmt.Sprintf("localhost:15010")
-	adsc, err := Dial(grpc, &Config{
+	adsc, err := adsc.Dial(grpc, "", &adsc.Config{
 		IP:        "10.11.0.1",
 		Namespace: "envoy",
 	})
@@ -243,10 +244,13 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Waiting for updates")
+	adsc.Watch()
 	for {
 		select {
-		case r := <-adsc.Updates:
+		case r := <-adsc.RawUpdates:
 			fmt.Printf("Got update: %v\n", r.TypeUrl)
+		case r := <-adsc.Updates:
+			fmt.Printf("Got small update: %v\n", r)
 		case <-time.After(time.Second * 10):
 			fmt.Println("Done")
 			return
