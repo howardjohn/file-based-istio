@@ -12,5 +12,6 @@ require (
 	github.com/envoyproxy/go-control-plane v0.8.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/protobuf v1.2.1
+	google.golang.org/grpc v1.20.1
 	istio.io/istio v0.0.0-20190525042921-d8a34e3aa93f
 )
