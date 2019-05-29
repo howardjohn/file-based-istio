@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package xadsc
+package adsc
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	ads "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	xdsutil "github.com/envoyproxy/go-control-plane/pkg/util"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc"
@@ -104,7 +106,6 @@ type ADSC struct {
 
 	// Updates includes the type of the last update received from the server.
 	Updates     chan string
-	RawUpdates  chan *xdsapi.DiscoveryResponse
 	VersionInfo map[string]string
 
 	mutex sync.Mutex
@@ -135,7 +136,6 @@ func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
 		done:        make(chan error),
 		Updates:     make(chan string, 100),
-		RawUpdates:  make(chan *xdsapi.DiscoveryResponse, 100),
 		VersionInfo: map[string]string{},
 		certDir:     certDir,
 		url:         url,
@@ -258,13 +258,12 @@ func (a *ADSC) handleRecv() {
 	for {
 		msg, err := a.stream.Recv()
 		if err != nil {
+			log.Println("Connection closed ", err, a.nodeID)
 			a.Close()
 			a.WaitClear()
 			a.Updates <- "close"
 			return
 		}
-
-		a.RawUpdates <- msg
 
 		listeners := []*xdsapi.Listener{}
 		clusters := []*xdsapi.Cluster{}
@@ -333,6 +332,8 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 			if config == nil {
 				config, _ = xdsutil.MessageToStruct(f0.GetTypedConfig())
 			}
+			c := config.Fields["cluster"].GetStringValue()
+			log.Printf("TCP: %s -> %s", l.Name, c)
 		} else if f0.Name == "envoy.http_connection_manager" {
 			lh[l.Name] = l
 
@@ -347,9 +348,17 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 			// ignore for now
 		} else if f0.Name == "envoy.filters.network.mysql_proxy" {
 			// ignore for now
+		} else {
+			tm := &jsonpb.Marshaler{Indent: "  "}
+			log.Println(tm.MarshalToString(l))
 		}
 	}
 
+	log.Println("LDS: http=", len(lh), "tcp=", len(lt), "size=", ldsSize)
+	if a.DumpCfg {
+		b, _ := json.MarshalIndent(ll, " ", " ")
+		log.Println(string(b))
+	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	if len(routes) > 0 {
@@ -465,8 +474,14 @@ func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 		edscds[c.Name] = c
 	}
 
+	log.Println("CDS: ", len(cn), "size=", cdsSize)
+
 	if len(cn) > 0 {
 		a.sendRsc(endpointType, cn)
+	}
+	if a.DumpCfg {
+		b, _ := json.MarshalIndent(ll, " ", " ")
+		log.Println(string(b))
 	}
 
 	a.mutex.Lock()
@@ -518,6 +533,11 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 		ep += len(cla.Endpoints)
 	}
 
+	log.Println("EDS: ", len(eds), "size=", edsSize, "ep=", ep)
+	if a.DumpCfg {
+		b, _ := json.MarshalIndent(eds, " ", " ")
+		log.Println(string(b))
+	}
 	if a.InitialLoad == 0 {
 		// first load - Envoy loads listeners after endpoints
 		_ = a.stream.Send(&xdsapi.DiscoveryRequest{
@@ -548,8 +568,10 @@ func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
 	for _, r := range configurations {
 		for _, h := range r.VirtualHosts {
 			vh++
-			for range h.Routes {
+			for _, rt := range h.Routes {
 				rcount++
+				// Example: match:<prefix:"/" > route:<cluster:"outbound|9154||load-se-154.local" ...
+				log.Println(h.Name, rt.Match.PathSpecifier, rt.GetRoute().GetCluster())
 			}
 		}
 		rds[r.Name] = r
@@ -557,6 +579,14 @@ func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
 	}
 	if a.InitialLoad == 0 {
 		a.InitialLoad = time.Since(a.watchTime)
+		log.Println("RDS: ", len(configurations), "size=", size, "vhosts=", vh, "routes=", rcount, " time=", a.InitialLoad)
+	} else {
+		log.Println("RDS: ", len(configurations), "size=", size, "vhosts=", vh, "routes=", rcount)
+	}
+
+	if a.DumpCfg {
+		b, _ := json.MarshalIndent(configurations, " ", " ")
+		log.Println(string(b))
 	}
 
 	a.mutex.Lock()
