@@ -1,8 +1,9 @@
-package main
+package client
 
 import (
 	"fmt"
 	"io/ioutil"
+	"path"
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -14,25 +15,27 @@ import (
 	"istio.io/istio/pkg/adsc"
 )
 
-func waitForAllConfig(adsc *adsc.ADSC) {
+func waitForAllConfig(adsc *adsc.ADSC) error {
 	adsc.Watch()
 	if _, err := adsc.Wait("cds", 10*time.Second); err != nil {
-		ErrorExit("Failed to wait: %v", err)
+		return fmt.Errorf("failed to wait: %v", err)
 	}
 	if _, err := adsc.Wait("eds", 10*time.Second); err != nil {
-		ErrorExit("Failed to wait: %v", err)
+		return fmt.Errorf("failed to wait: %v", err)
 	}
 	if _, err := adsc.Wait("lds", 10*time.Second); err != nil {
-		ErrorExit("Failed to wait: %v", err)
+		return fmt.Errorf("failed to wait: %v", err)
 	}
 	if _, err := adsc.Wait("rds", 10*time.Second); err != nil {
-		ErrorExit("Failed to wait: %v", err)
+		return fmt.Errorf("failed to wait: %v", err)
 	}
-	return
+	return nil
 }
 
-func WriteXDSConfig(adsc *adsc.ADSC) {
-	waitForAllConfig(adsc)
+func WriteXDSConfig(adsc *adsc.ADSC, outdir string) error {
+	if err := waitForAllConfig(adsc); err != nil {
+		return err
+	}
 
 	clusters := []*v2.Cluster{}
 	for _, c := range adsc.Clusters {
@@ -41,7 +44,7 @@ func WriteXDSConfig(adsc *adsc.ADSC) {
 	for _, c := range adsc.EDSClusters {
 		clusters = append(clusters, c)
 	}
-	write(clusterResponse(clusters), "cds.yaml")
+	write(clusterResponse(clusters), outdir, "cds.yaml")
 
 	listeners := []*v2.Listener{}
 	for _, l := range adsc.HTTPListeners {
@@ -50,22 +53,24 @@ func WriteXDSConfig(adsc *adsc.ADSC) {
 	for _, l := range adsc.TCPListeners {
 		listeners = append(listeners, l)
 	}
-	write(listenerResponse(listeners), "lds.yaml")
+	write(listenerResponse(listeners), outdir, "lds.yaml")
 
 	for route, r := range adsc.Routes {
-		write(routesResponse([]*v2.RouteConfiguration{r}), fmt.Sprintf("rds/%s.yaml", SanitizeName(route)))
+		write(routesResponse([]*v2.RouteConfiguration{r}), outdir, fmt.Sprintf("rds/%s.yaml", SanitizeName(route)))
 	}
 
 	for endpoint, e := range adsc.EDS {
-		write(endpointsResponse([]*v2.ClusterLoadAssignment{e}), fmt.Sprintf("eds/%s.yaml", SanitizeName(endpoint)))
+		write(endpointsResponse([]*v2.ClusterLoadAssignment{e}), outdir, fmt.Sprintf("eds/%s.yaml", SanitizeName(endpoint)))
 	}
+
+	return nil
 }
 
-func write(r *v2.DiscoveryResponse, out string) {
-	if OUTDIR == "" {
+func write(r *v2.DiscoveryResponse, dir string, file string) {
+	if dir == "" {
 		fmt.Println(string(MarshallYaml(r)))
 	} else {
-		if err := ioutil.WriteFile(OUTDIR+"/"+out, MarshallYaml(r), 0777); err != nil {
+		if err := ioutil.WriteFile(path.Join(dir, file), MarshallYaml(r), 0777); err != nil {
 			panic(err)
 		}
 	}

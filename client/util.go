@@ -1,21 +1,13 @@
-package main
+package client
 
 import (
 	"bytes"
-	"fmt"
-	"os"
 	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 )
-
-func ErrorExit(msg string, a ...interface{}) {
-	fmt.Printf(msg, a)
-	fmt.Println()
-	os.Exit(1)
-}
 
 func MarshallJson(w proto.Message) []byte {
 	buffer := &bytes.Buffer{}
