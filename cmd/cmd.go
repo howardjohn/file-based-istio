@@ -5,9 +5,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/howardjohn/file-based-istio/client"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/adsc"
+
+	"github.com/howardjohn/file-based-istio/client"
 )
 
 var (
