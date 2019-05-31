@@ -4,6 +4,10 @@ This tool connects to Pilot, then dumps the XDS responses to files that can be r
 
 The config will be slightly modified to change all config sources to point to the relevant files rather than Pilot. The bootstrap is also custom (and static). Aside from this, the config will be the same as from Pilot.
 
+## Install
+
+`go get github.com/howardjohn/file-based-istio`
+
 ## Usage
 
 * The `-o` flag should be provided for the output directory, otherwise everything is output to stdout.
