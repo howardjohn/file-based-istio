@@ -1,70 +1,3 @@
-{{ range $s := until (int .Values.services) }}
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: envoy-{{ $s }}
-spec:
-  selector:
-    matchLabels:
-      name: envoy-{{ $s }}
-  template:
-    metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
-      labels:
-        app: envoy
-        name: envoy-{{ $s }}
-    spec:
-      containers:
-      - name: istio-proxy
-        image: istio/proxyv2:1.1.7
-        command:
-        - /usr/local/bin/envoy
-        - -c
-        - /etc/config/bootstrap/bootstrap.yaml
-        - --restart-epoch
-        - "0"
-        - --drain-time-s
-        - "45"
-        - --log-level
-        - info
-        volumeMounts:
-        - name: bootstrap
-          mountPath: /etc/config/bootstrap
-        - name: config
-          mountPath: /etc/config/config
-        - name: rds
-          mountPath: /etc/config/rds
-        - name: eds
-          mountPath: /etc/config/eds
-      volumes:
-        - name: bootstrap
-          configMap:
-            name: envoy-bootstrap
-        - name: config
-          configMap:
-            name: envoy-config
-        - name: rds
-          configMap:
-            name: envoy-rds
-        - name: eds
-          configMap:
-            name: envoy-eds
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: envoy-{{ $s }}
-spec:
-  selector:
-    name: envoy-{{ $s }}
-  ports:
-    - port: 80
-      name: http
-    - port: 15000
-      name: admin
----
-{{ end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -111,3 +44,71 @@ metadata:
   name: envoy-rds
 data:
 {{- (.Files.Glob "files/rds/*").AsConfig | nindent 2 }}
+---
+{{ range $s := until (int .Values.services) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-{{ $s }}
+spec:
+  selector:
+    matchLabels:
+      name: envoy-{{ $s }}
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: envoy
+        name: envoy-{{ $s }}
+    spec:
+      containers:
+        - name: istio-proxy
+          image: istio/proxyv2:1.1.7
+          command:
+            - /usr/local/bin/envoy
+            - -c
+            - /etc/config/bootstrap/bootstrap.yaml
+            - --restart-epoch
+            - "0"
+            - --drain-time-s
+            - "45"
+            - --log-level
+            - info
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /etc/config/bootstrap
+            - name: config
+              mountPath: /etc/config/config
+            - name: rds
+              mountPath: /etc/config/rds
+            - name: eds
+              mountPath: /etc/config/eds
+      volumes:
+        - name: bootstrap
+          configMap:
+            name: envoy-bootstrap
+        - name: config
+          configMap:
+            name: envoy-config
+        - name: rds
+          configMap:
+            name: envoy-rds
+        - name: eds
+          configMap:
+            name: envoy-eds
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-{{ $s }}
+spec:
+  selector:
+    name: envoy-{{ $s }}
+  ports:
+    - port: 80
+      name: http
+    - port: 15000
+      name: admin
+---
+{{ end }}
