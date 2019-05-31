@@ -140,7 +140,11 @@ spec:
     spec:
       containers:
         - name: istio-proxy
+{{- if $.Values.istioProxy }}
           image: istio/proxyv2:1.1.7
+{{- else }}
+          image: envoyproxy/envoy-dev:829b905ca0fdc85233c3969247e53a62a52ac627
+{{- end}}
           command:
             - /usr/local/bin/envoy
             - -c
