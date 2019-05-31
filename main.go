@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"sigs.k8s.io/yaml"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -64,11 +65,11 @@ func main() {
 	write(listenerResponse(listeners), "lds.yaml")
 
 	for route, r := range adsc.Routes {
-		write(routesResponse([]*v2.RouteConfiguration{r}), fmt.Sprintf("rds/%s.yaml", route))
+		write(routesResponse([]*v2.RouteConfiguration{r}), fmt.Sprintf("rds/%s.yaml", sanitizeName(route)))
 	}
 
 	for endpoint, e := range adsc.EDS {
-		write(endpointsResponse([]*v2.ClusterLoadAssignment{e}), fmt.Sprintf("eds/%s.yaml", endpoint))
+		write(endpointsResponse([]*v2.ClusterLoadAssignment{e}), fmt.Sprintf("eds/%s.yaml", sanitizeName(endpoint)))
 	}
 }
 
@@ -147,7 +148,7 @@ func sanitizeClusterAds(response []*v2.Cluster) {
 		if r.EdsClusterConfig == nil {
 			continue
 		}
-		path := fmt.Sprintf("/etc/config/eds/%s.yaml", r.Name)
+		path := fmt.Sprintf("/etc/config/eds/%s.yaml", sanitizeName(r.Name))
 		r.EdsClusterConfig.EdsConfig = &core.ConfigSource{
 			ConfigSourceSpecifier: &core.ConfigSource_Path{Path: path},
 		}
@@ -161,7 +162,7 @@ func sanitizeListenerAds(response []*v2.Listener) {
 				switch f.Name {
 				case "envoy.http_connection_manager":
 					routeName := f.GetConfig().Fields["rds"].GetStructValue().GetFields()["route_config_name"].GetStringValue()
-					path := fmt.Sprintf("/etc/config/rds/%s.yaml", routeName)
+					path := fmt.Sprintf("/etc/config/rds/%s.yaml", sanitizeName(routeName))
 					rdsFileConfig, _ := util.MessageToStruct(&hcm_filter.Rds{
 						RouteConfigName: routeName,
 						ConfigSource: core.ConfigSource{
@@ -178,18 +179,8 @@ func sanitizeListenerAds(response []*v2.Listener) {
 	}
 }
 
-func getHTTPFilterConfig(filter *hcm_filter.HttpFilter, out proto.Message) error {
-	switch c := filter.ConfigType.(type) {
-	case *hcm_filter.HttpFilter_Config:
-		if err := util.StructToMessage(c.Config, out); err != nil {
-			return err
-		}
-	case *hcm_filter.HttpFilter_TypedConfig:
-		if err := types.UnmarshalAny(c.TypedConfig, out); err != nil {
-			return err
-		}
-	}
-	return nil
+func sanitizeName(name string) string {
+	return strings.ReplaceAll(name, "|", "_.")
 }
 
 func MarshallJson(w proto.Message) []byte {
