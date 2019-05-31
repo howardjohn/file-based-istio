@@ -27,8 +27,10 @@ var rootCmd = &cobra.Command{
 	Use:   "file-envoy",
 	Short: "Convert Pilot XDS config to a file based XDS config",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		_ = os.MkdirAll(path.Join(outdir, "rds"), os.ModePerm)
-		_ = os.MkdirAll(path.Join(outdir, "eds"), os.ModePerm)
+		if outdir != "" {
+			_ = os.MkdirAll(path.Join(outdir, "rds"), os.ModePerm)
+			_ = os.MkdirAll(path.Join(outdir, "eds"), os.ModePerm)
+		}
 
 		adsc, err := adsc.Dial(pilotAddress, "", &adsc.Config{
 			IP: nodeIp,
