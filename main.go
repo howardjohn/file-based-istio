@@ -39,6 +39,8 @@ func main() {
 	adsc.Watch()
 	_, err = adsc.Wait("cds", 10*time.Second)
 	_, err = adsc.Wait("lds", 10*time.Second)
+	_, err = adsc.Wait("rds", 10*time.Second)
+	_, err = adsc.Wait("eds", 10*time.Second)
 
 	clusters := []*v2.Cluster{}
 	for _, c := range adsc.Clusters {
@@ -58,6 +60,32 @@ func main() {
 		listeners = append(listeners, l)
 	}
 	write(listenerResponse(listeners), "lds.yaml")
+
+	routes := []*v2.RouteConfiguration{}
+	for _, r := range adsc.Routes {
+		routes = append(routes, r)
+	}
+	write(routesResponse(routes), "rds.yaml")
+
+	endpoints := []*v2.ClusterLoadAssignment{}
+	for _, e := range adsc.EDS {
+		endpoints = append(endpoints, e)
+	}
+	write(endpointsResponse(endpoints), "eds.yaml")
+}
+
+func endpointsResponse(response []*v2.ClusterLoadAssignment) *v2.DiscoveryResponse {
+	out := &v2.DiscoveryResponse{
+		TypeUrl:     pilotv2.EndpointType,
+		VersionInfo: "0",
+	}
+
+	for _, c := range response {
+		cc, _ := types.MarshalAny(c)
+		out.Resources = append(out.Resources, *cc)
+	}
+
+	return out
 }
 
 func write(r *v2.DiscoveryResponse, out string) {
@@ -76,6 +104,8 @@ func clusterResponse(response []*v2.Cluster) *v2.DiscoveryResponse {
 		VersionInfo: "0",
 	}
 
+	sanitizeClusterAds(response)
+
 	for _, c := range response {
 		cc, _ := types.MarshalAny(c)
 		out.Resources = append(out.Resources, *cc)
@@ -91,7 +121,6 @@ func listenerResponse(response []*v2.Listener) *v2.DiscoveryResponse {
 	}
 
 	sanitizeListenerAds(response)
-	// TODO remove mixer filter? or use istio-proxy image
 
 	for _, c := range response {
 		cc, _ := types.MarshalAny(c)
@@ -99,6 +128,31 @@ func listenerResponse(response []*v2.Listener) *v2.DiscoveryResponse {
 	}
 
 	return out
+}
+
+func routesResponse(response []*v2.RouteConfiguration) *v2.DiscoveryResponse {
+	out := &v2.DiscoveryResponse{
+		TypeUrl:     pilotv2.RouteType,
+		VersionInfo: "0",
+	}
+
+	for _, c := range response {
+		cc, _ := types.MarshalAny(c)
+		out.Resources = append(out.Resources, *cc)
+	}
+
+	return out
+}
+
+func sanitizeClusterAds(response []*v2.Cluster) {
+	for _, r := range response {
+		if r.EdsClusterConfig == nil {
+			continue
+		}
+		r.EdsClusterConfig.EdsConfig = &core.ConfigSource{
+			ConfigSourceSpecifier: &core.ConfigSource_Path{Path: "/etc/config/eds.yaml"},
+		}
+	}
 }
 
 func sanitizeListenerAds(response []*v2.Listener) {
