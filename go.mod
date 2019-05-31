@@ -1,4 +1,4 @@
-module istio.io/file-envoy
+module github.com/howardjohn/file-based-istio
 
 go 1.12
 

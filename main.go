@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"istio.io/file-envoy/cmd"
+	"github.com/howardjohn/file-based-istio/cmd"
 )
 
 var (
