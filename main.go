@@ -9,7 +9,6 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/util"
 	"github.com/gogo/protobuf/types"
 	"io/ioutil"
-	"log"
 	"os"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -30,11 +29,9 @@ func main() {
 	_ = os.MkdirAll(OUTDIR+"/rds", os.ModePerm)
 	_ = os.MkdirAll(OUTDIR+"/eds", os.ModePerm)
 
-	log.SetFlags(0)
 	grpc := fmt.Sprintf("localhost:15010")
 	adsc, err := adsc.Dial(grpc, "", &adsc.Config{
-		IP:        "10.11.0.1",
-		Namespace: "envoy",
+		IP:        "10.60.11.42",
 	})
 	if err != nil {
 		panic(err)
