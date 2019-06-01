@@ -127,6 +127,7 @@ kind: Deployment
 metadata:
   name: envoy-{{ $s }}
 spec:
+
   selector:
     matchLabels:
       name: envoy-{{ $s }}
@@ -147,7 +148,9 @@ spec:
         args:
           - -c
           - |
+            sysctl -w fs.inotify.max_user_watches=524288
             sysctl -w user.max_inotify_watches=524288
+            sysctl -w user.max_inotify_instances=8192
         resources:
           requests:
             cpu: 1m
