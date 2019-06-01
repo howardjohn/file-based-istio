@@ -138,6 +138,20 @@ spec:
         app: envoy
         name: envoy-{{ $s }}
     spec:
+      initContainers:
+      - name: init-sysctl
+        image: busybox:1.29
+        securityContext:
+          privileged: true
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            sysctl -w user.max_inotify_watches=524288
+        resources:
+          requests:
+            cpu: 1m
+            memory: 1Mi
       containers:
         - name: istio-proxy
 {{- if $.Values.istioProxy }}
