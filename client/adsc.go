@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	hcm_filter "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
 	"github.com/envoyproxy/go-control-plane/pkg/util"
@@ -155,6 +155,9 @@ func sanitizeListenerAds(response []*v2.Listener) {
 				switch f.Name {
 				case "envoy.http_connection_manager":
 					routeName := f.GetConfig().Fields["rds"].GetStructValue().GetFields()["route_config_name"].GetStringValue()
+					if routeName == "" {
+						continue
+					}
 					path := fmt.Sprintf("/etc/config/rds/%s.yaml", SanitizeName(routeName))
 					rdsFileConfig, _ := util.MessageToStruct(&hcm_filter.Rds{
 						RouteConfigName: routeName,
