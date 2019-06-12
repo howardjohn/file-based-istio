@@ -22,3 +22,8 @@ This generates all of the config needed into the install folder, which can be in
 `helm template install | kubectl apply -f -`
 
 `replace --force` may be needed instead of `apply` as a hack to not write the config as an annotation, as large EDS responses can exceed the size limit on annotations.
+
+
+## TODO
+
+Client that sets `SO_ORIGINAL_DST` directly to avoid iptables. Like [this](https://gist.github.com/mangalaman93/eba276775541756694ee).

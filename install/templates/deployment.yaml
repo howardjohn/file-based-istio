@@ -155,10 +155,40 @@ spec:
           requests:
             cpu: 1m
             memory: 1Mi
+{{- if $.Values.iptables }}
+      - name: istio-init
+        args:
+          - -p
+          - "15001"
+          - -u
+          - "1337"
+          - -m
+          - REDIRECT
+          - -i
+          - '*'
+          - -x
+          - ""
+          - -b
+          - "9080"
+          - -d
+          - "15020"
+        image: istio/proxy_init:{{$.Values.version}}
+        resources:
+          requests:
+            cpu: 1m
+            memory: 1Mi
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+          procMount: Default
+          runAsNonRoot: false
+          runAsUser: 0
+{{- end }}
       containers:
         - name: istio-proxy
 {{- if $.Values.istioProxy }}
-          image: istio/proxyv2:1.1.7
+          image: istio/proxyv2:{{$.Values.version}}
 {{- else }}
           image: envoyproxy/envoy-dev:829b905ca0fdc85233c3969247e53a62a52ac627
 {{- end}}
@@ -183,6 +213,13 @@ spec:
               mountPath: /etc/config/eds
             - name: fake-cert
               mountPath: /etc/certs/
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            capabilities:
+              add:
+                - NET_ADMIN
+            privileged: true
       volumes:
         - name: bootstrap
           configMap:
