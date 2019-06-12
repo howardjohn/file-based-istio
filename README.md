@@ -11,10 +11,11 @@ The config will be slightly modified to change all config sources to point to th
 ## Usage
 
 * The `-o` flag should be provided for the output directory, otherwise everything is output to stdout.
-* The `-n` flag can be provided to call Pilot as the pod. This is needed to get inbound listener, and maybe some other configs.
+* The `-i` flag can be provided to call Pilot as the pod. This is needed to get inbound listener, and maybe some other configs.
+* The `-n` flag can be provided to change the namespace to use for the pod
 * The `-p` flag can be provided to change the Pilot address to use. By default this is `localhost:15010`.
 
-Example: `file-based-istio -o install/files -n 10.28.0.166 -p localhost:15010`
+Example: `file-based-istio -o install/files -i 10.28.0.166 -p localhost:15010`
 
 This generates all of the config needed into the install folder, which can be installed with:
 

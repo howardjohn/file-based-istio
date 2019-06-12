@@ -15,12 +15,14 @@ var (
 	outdir       = ""
 	pilotAddress = "localhost:15010"
 	nodeIp       = "0.0.0.0"
+	namespace    = "default"
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&outdir, "outdir", "o", outdir, "directory to output to")
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
-	rootCmd.PersistentFlags().StringVarP(&nodeIp, "node-ip", "n", nodeIp, "ip address of node to simulate (-ojsonpath='{.status.podIP}')")
+	rootCmd.PersistentFlags().StringVarP(&nodeIp, "pod-ip", "i", nodeIp, "ip address of pod to simulate (-ojsonpath='{.status.podIP}')")
+	rootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", namespace, "namespace to use for the pod")
 }
 
 var rootCmd = &cobra.Command{
@@ -33,7 +35,11 @@ var rootCmd = &cobra.Command{
 		}
 
 		adsc, err := adsc.Dial(pilotAddress, "", &adsc.Config{
-			IP: nodeIp,
+			IP:        nodeIp,
+			Namespace: namespace,
+			Meta: map[string]string{
+				"CONFIG_NAMESPACE": namespace,
+			},
 		})
 		if err != nil {
 			ErrorExit("Failed to connect to pilot: %v", err)
