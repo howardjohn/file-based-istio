@@ -190,7 +190,7 @@ spec:
 {{- if $.Values.istioProxy }}
           image: istio/proxyv2:{{$.Values.version}}
 {{- else }}
-          image: envoyproxy/envoy-dev:829b905ca0fdc85233c3969247e53a62a52ac627
+          image: envoyproxy/envoy-dev:882a30677619856446f7e1b9d28c6ab319b21d1b
 {{- end}}
           command:
             - /usr/local/bin/envoy
@@ -202,6 +202,7 @@ spec:
             - "45"
             - --log-level
             - info
+            - --allow-unknown-fields
           volumeMounts:
             - name: bootstrap
               mountPath: /etc/config/bootstrap
