@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path"
 	"time"
 
@@ -27,7 +28,7 @@ func waitForAllConfig(adsc *adsc.ADSC) error {
 		return fmt.Errorf("failed to wait: %v", err)
 	}
 	if _, err := adsc.Wait("rds", 10*time.Second); err != nil {
-		return fmt.Errorf("failed to wait: %v", err)
+		log.Println("warning: failed to get RDS")
 	}
 	return nil
 }
@@ -152,6 +153,9 @@ func sanitizeListenerAds(response []*v2.Listener) {
 	for _, c := range response {
 		for _, fc := range c.FilterChains {
 			for _, f := range fc.Filters {
+				if f.GetConfig() == nil {
+					continue
+				}
 				switch f.Name {
 				case "envoy.http_connection_manager":
 					routeName := f.GetConfig().Fields["rds"].GetStructValue().GetFields()["route_config_name"].GetStringValue()
